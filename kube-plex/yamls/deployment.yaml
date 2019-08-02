@@ -1,0 +1,103 @@
+---
+# Source: kube-plex/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-plex
+  namespace: kube-plex
+  labels:
+    app: kube-plex
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: kube-plex
+  template:
+    metadata:
+      labels:
+        app: kube-plex
+    spec:
+      serviceAccountName: kube-plex
+      hostname: "kube-plex"
+      containers:
+      - name: plex
+        image: "plexinc/pms-docker:1.10.1.4602-f54242b6b"
+        imagePullPolicy: IfNotPresent
+        readinessProbe:
+          httpGet:
+            path: /identity
+            port: 32400
+          initialDelaySeconds: 15
+          timeoutSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /identity
+            port: 32400
+          initialDelaySeconds: 10
+          timeoutSeconds: 10
+        ports:
+          - name: pms
+            containerPort: 32400
+          - name: http
+            containerPort: 32400
+          - name: https
+            containerPort: 32443
+          - protocol: UDP
+            containerPort: 1900
+          - protocol: UDP
+            containerPort: 32410
+          - protocol: UDP
+            containerPort: 32412
+          - protocol: UDP
+            containerPort: 32413
+          - protocol: UDP
+            containerPort: 32414
+
+        env:
+        - name: TZ
+          value: "Europe/Madrid"
+        # TODO: move this to a secret?
+        - name: PLEX_CLAIM
+          value: "claim-7BUKNE7sWgA1eejAGsed"
+        # kube-plex env vars
+        - name: PMS_INTERNAL_ADDRESS
+          value: http://kube-plex:32400
+        - name: PMS_IMAGE
+          value: "plexinc/pms-docker:1.10.1.4602-f54242b6b"
+        - name: KUBE_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: TRANSCODE_PVC
+          value: "kube-plex-transcode"
+        - name: DATA_PVC
+          value: "plex-pvc"
+        - name: CONFIG_PVC
+          value: "kube-plex-config"
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: config
+          mountPath: /config
+        - name: transcode
+          mountPath: /transcode
+        - name: shared
+          mountPath: /shared
+        resources:
+          {}
+      nodeSelector:
+        beta.kubernetes.io/arch: amd64
+        
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: "plex-pvc"
+      - name: config
+        persistentVolumeClaim:
+          claimName: "kube-plex-config"
+      - name: transcode
+        emptyDir: {}
+      - name: shared
+        emptyDir: {}

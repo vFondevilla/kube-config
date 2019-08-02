@@ -1,0 +1,64 @@
+---
+# Source: kube-plex/templates/volumes.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kube-plex-config
+  namespace: kube-plex
+  labels:
+    app: kube-plex
+    component: config
+spec:
+  accessModes:
+  - "ReadWriteMany"
+  resources:
+    requests:
+      storage: "20Gi"
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: plex-nfs-data-pv-copy
+  namespace: kube-plex
+spec:
+  capacity:
+    storage: 200Gi
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    server: nas01.vfondevilla.com
+    path: "/volume2/Datos"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: plex-kube-plex-transcode
+  namespace: kube-plex
+  labels:
+    app: plex
+    component: transcode
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: syno-nfs-ssd
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  # This name uniquely identifies the PVC. This is used in deployment.
+  name: plex-pvc
+  namespace: kube-plex
+spec:
+  # Read more about access modes here: http://kubernetes.io/docs/user-guide/persistent-volumes/#access-modes
+  accessModes:
+    # The volume is mounted as read-write by a single node
+    - ReadWriteMany
+  resources:
+    # This is the request for storage. Should be available in the cluster.
+    requests:
+      storage: 200Gi
+  volumeName: plex-nfs-data-pv-copy
+  storageClassName: ""

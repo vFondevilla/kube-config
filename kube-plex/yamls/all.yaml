@@ -1,0 +1,247 @@
+[debug] Created tunnel using local port: '64211'
+
+[debug] SERVER: "127.0.0.1:64211"
+
+[debug] Original chart version: ""
+[debug] CHART PATH: /Users/victor/Repos/config-kube/x86/kube-plex/kube-plex/charts/kube-plex
+
+NAME:   plex-test
+REVISION: 1
+RELEASED: Tue May 28 22:51:46 2019
+CHART: kube-plex-0.2.3
+USER-SUPPLIED VALUES:
+claimToken: claim-7BUKNE7sWgA1eejAGsed
+image:
+  pullPolicy: IfNotPresent
+  repository: plexinc/pms-docker
+  tag: 1.10.1.4602-f54242b6b
+ingress:
+  annotations: null
+  enabled: false
+  hosts:
+  - plex.k8s.vfondevilla.com
+  tls: null
+kubePlex:
+  enabled: false
+  image:
+    pullPolicy: Always
+    repository: quay.io/munnerz/kube-plex
+    tag: latest
+nodeSelector:
+  beta.kubernetes.io/arch: amd64
+persistence:
+  config:
+    accessMode: ReadWriteMany
+    size: 20Gi
+    storageClass: ""
+  data:
+    claimName: plex-pvc
+  transcode:
+    size: 20Gi
+    storageClass: ""
+rbac:
+  create: true
+resources: {}
+service:
+  annotations: {}
+  labels: {}
+  loadBalancerIP: null
+  port: 32400
+  type: LoadBalancer
+timezone: Europe/London
+
+COMPUTED VALUES:
+claimToken: claim-7BUKNE7sWgA1eejAGsed
+image:
+  pullPolicy: IfNotPresent
+  repository: plexinc/pms-docker
+  tag: 1.10.1.4602-f54242b6b
+ingress:
+  annotations: null
+  enabled: false
+  hosts:
+  - plex.k8s.vfondevilla.com
+  tls: null
+kubePlex:
+  enabled: false
+  image:
+    pullPolicy: Always
+    repository: quay.io/munnerz/kube-plex
+    tag: latest
+nodeSelector:
+  beta.kubernetes.io/arch: amd64
+persistence:
+  config:
+    accessMode: ReadWriteMany
+    size: 20Gi
+    storageClass: ""
+  data:
+    claimName: plex-pvc
+    size: 40Gi
+    storageClass: ""
+  transcode:
+    size: 20Gi
+    storageClass: ""
+rbac:
+  create: true
+resources: {}
+service:
+  annotations: {}
+  labels: {}
+  loadBalancerIP: null
+  port: 32400
+  type: LoadBalancer
+timezone: Europe/London
+
+HOOKS:
+MANIFEST:
+
+---
+# Source: kube-plex/templates/volumes.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: plex-test-kube-plex-config
+  labels:
+    app: kube-plex
+    chart: kube-plex-0.2.3
+    release: plex-test
+    heritage: Tiller
+    component: config
+spec:
+  accessModes:
+  - "ReadWriteMany"
+  resources:
+    requests:
+      storage: "20Gi"
+---
+# Source: kube-plex/templates/rbac.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: plex-test-kube-plex
+---
+# Source: kube-plex/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: plex-test-kube-plex
+  labels:
+    app: kube-plex
+    chart: kube-plex-0.2.3
+    release: plex-test
+    heritage: Tiller
+spec:
+  type: LoadBalancer
+  ports:
+    - name: pms
+      port: 32400
+      protocol: TCP
+      targetPort: pms
+
+    - name: http
+      port: 80
+      targetPort: pms
+    - name: https
+      port: 443
+      targetPort: 32443
+  selector:
+    app: kube-plex
+    release: plex-test
+---
+# Source: kube-plex/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: plex-test-kube-plex
+  labels:
+    app: kube-plex
+    chart: kube-plex-0.2.3
+    release: plex-test
+    heritage: Tiller
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: kube-plex
+      release: plex-test
+  template:
+    metadata:
+      labels:
+        app: kube-plex
+        release: plex-test
+    spec:
+      serviceAccountName: plex-test-kube-plex
+      hostname: "plex-test-kube-plex"
+      containers:
+      - name: plex
+        image: "plexinc/pms-docker:1.10.1.4602-f54242b6b"
+        imagePullPolicy: IfNotPresent
+        readinessProbe:
+          httpGet:
+            path: /identity
+            port: 32400
+          initialDelaySeconds: 15
+          timeoutSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /identity
+            port: 32400
+          initialDelaySeconds: 10
+          timeoutSeconds: 10
+        ports:
+          - name: pms
+            containerPort: 32400
+          - name: http
+            containerPort: 32400
+          - name: https
+            containerPort: 32443
+        env:
+        - name: TZ
+          value: "Europe/London"
+        # TODO: move this to a secret?
+        - name: PLEX_CLAIM
+          value: "claim-7BUKNE7sWgA1eejAGsed"
+        # kube-plex env vars
+        - name: PMS_INTERNAL_ADDRESS
+          value: http://plex-test-kube-plex:32400
+        - name: PMS_IMAGE
+          value: "plexinc/pms-docker:1.10.1.4602-f54242b6b"
+        - name: KUBE_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: TRANSCODE_PVC
+          value: "plex-test-kube-plex-transcode"
+        - name: DATA_PVC
+          value: "plex-pvc"
+        - name: CONFIG_PVC
+          value: "plex-test-kube-plex-config"
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: config
+          mountPath: /config
+        - name: transcode
+          mountPath: /transcode
+        - name: shared
+          mountPath: /shared
+        resources:
+          {}
+          
+      nodeSelector:
+        beta.kubernetes.io/arch: amd64
+        
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: "plex-pvc"
+      - name: config
+        persistentVolumeClaim:
+          claimName: "plex-test-kube-plex-config"
+      - name: transcode
+        emptyDir: {}
+      - name: shared
+        emptyDir: {}

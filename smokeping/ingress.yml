@@ -1,0 +1,18 @@
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: smokeping
+  labels:
+    k8s-app: smokeping
+  annotations:
+    kubernetes.io/ingress.class: "traefik"
+spec:
+  rules:
+    - host: "smokeping.apps.vfondevilla.com"
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: smokeping
+              servicePort: 80

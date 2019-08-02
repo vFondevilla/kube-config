@@ -1,0 +1,61 @@
+---
+# Source: kube-plex/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-plex-tcp
+  namespace: kube-plex
+  labels:
+    app: kube-plex
+  annotations:
+    metallb.universe.tf/allow-shared-ip: plex
+spec:
+  type: LoadBalancer
+  ports:
+    - name: pms
+      port: 32400
+      protocol: TCP
+      targetPort: pms
+    - name: http
+      port: 80
+      targetPort: pms
+    - name: https
+      port: 443
+      targetPort: 32443
+  selector:
+    app: kube-plex
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-plex-udp
+  namespace: kube-plex
+  labels:
+    app: kube-plex
+  annotations:
+    metallb.universe.tf/allow-shared-ip: plex
+spec:
+  type: LoadBalancer
+  ports:
+    - name: udp-1900
+      port: 1900
+      protocol: UDP
+      targetPort: 1900
+    - port: 32410
+      targetPort: 32410
+      protocol: UDP
+      name: udp-32410
+    - port: 32412
+      targetPort: 32412
+      protocol: UDP
+      name: udp-32412
+    - port: 32413
+      targetPort: 32413
+      protocol: UDP
+      name: udp-32413
+    - port: 32414
+      targetPort: 32414
+      protocol: UDP
+      name: udp-32414
+  selector:
+    app: kube-plex

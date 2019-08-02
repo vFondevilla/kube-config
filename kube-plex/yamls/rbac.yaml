@@ -1,0 +1,7 @@
+---
+# Source: kube-plex/templates/rbac.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-plex
+  namespace: kube-plex
